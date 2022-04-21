@@ -1,5 +1,8 @@
 package kata.supermarket;
 
+import kata.supermarket.discountrules.BuyOneGetOneFree;
+import kata.supermarket.discountrules.Discount;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -7,10 +10,15 @@ import java.util.Collections;
 import java.util.List;
 
 public class Basket {
+    //This can be directly injected if we use all of the compoenets as Spring beans but for now
+    //I am initializing the static list here
+    private final List<Discount> discountRules;
     private final List<Item> items;
 
     public Basket() {
         this.items = new ArrayList<>();
+        this.discountRules = new ArrayList<>();
+        discountRules.add(new BuyOneGetOneFree());
     }
 
     public void add(final Item item) {
@@ -33,7 +41,7 @@ public class Basket {
         }
 
         private BigDecimal subtotal() {
-            return items.stream().map(Item::price)
+            return items.stream().map(item -> item.price().multiply(item.quantity()))
                     .reduce(BigDecimal::add)
                     .orElse(BigDecimal.ZERO)
                     .setScale(2, RoundingMode.HALF_UP);
@@ -47,7 +55,11 @@ public class Basket {
          *  which provides that functionality.
          */
         private BigDecimal discounts() {
-            return BigDecimal.ZERO;
+            return discountRules.stream()
+                    .map(discount -> discount.apply(items))
+                    .reduce(BigDecimal::add)
+                    .orElse(BigDecimal.ZERO)
+                    .setScale(2, RoundingMode.HALF_DOWN);
         }
 
         private BigDecimal calculate() {
